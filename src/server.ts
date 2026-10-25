@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import { pool } from "./config/db.js";
 import authRouter from "./modules/auth/auth.route.js";
 import { authenticate } from "./middleware/auth.middleware.js";
+import { requireMaintainer } from "./middleware/role.middleware.js";
+import issuesRouter from "./modules/issues/issues.route.js";
 
 dotenv.config();
 
@@ -12,8 +14,8 @@ const PORT = Number(process.env.PORT) || 5000;
 
 app.use(express.json());
 
-// Auth routes
 app.use("/api/auth", authRouter);
+app.use("/api/issues", issuesRouter);
 
 // Database health check
 app.get("/api/health", async (_req, res) => {
@@ -41,6 +43,18 @@ app.get("/api/auth/me", authenticate, (req, res) => {
     },
   });
 });
+
+app.get(
+  "/api/auth/maintainer-test",
+  authenticate,
+  requireMaintainer,
+  (_req, res) => {
+    res.json({
+      success: true,
+      message: "Maintainer access granted",
+    });
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`DevPulse API running on port ${PORT}`);
