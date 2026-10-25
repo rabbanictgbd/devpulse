@@ -130,8 +130,6 @@ export const signup = async (
 
 
 
-
-// Add this function below your existing signup function.
 export const login = async (
   req: Request,
   res: Response
