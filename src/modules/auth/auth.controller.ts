@@ -2,6 +2,7 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { pool } from "../../config/db.js";
+import jwt from "jsonwebtoken";
 
 type UserRole = "contributor" | "maintainer";
 
@@ -126,3 +127,102 @@ export const signup = async (
     });
   }
 };
+
+
+
+
+// Add this function below your existing signup function.
+export const login = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const email =
+      typeof req.body?.email === "string"
+        ? req.body.email.trim().toLowerCase()
+        : "";
+
+    const password =
+      typeof req.body?.password === "string"
+        ? req.body.password
+        : "";
+
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+      return;
+    }
+
+    const result = await pool.query(
+      `SELECT id, name, email, password, role,
+              created_at, updated_at
+       FROM users
+       WHERE email = $1`,
+      [email]
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!passwordMatches) {
+      res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+      throw new Error("JWT_SECRET is missing");
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+      },
+      jwtSecret,
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+        },
+      },
+    });
+  } catch {
+    console.error("Login failed");
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
