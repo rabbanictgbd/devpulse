@@ -298,3 +298,43 @@ export const updateIssue = async (
     });
   }
 };
+
+
+export const deleteIssue = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid issue ID",
+      });
+      return;
+    }
+
+    const result = await pool.query(
+      "DELETE FROM issues WHERE id = $1",
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      res.status(404).json({
+        success: false,
+        message: "Issue not found",
+      });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (error: unknown) {
+    console.error("Issue deletion failed:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
